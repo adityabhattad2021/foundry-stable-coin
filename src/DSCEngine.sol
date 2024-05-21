@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -13,13 +14,21 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__Constructor__TokenAndPriceFeedLengthMismatch();
 
     // State Variables //
+    uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
+    uint256 private constant PRECISION = 1e18;
+    uint256 private constant LIQUIDATION_PRECISION = 100;
+    uint256 private constant LIQUIDATION_THRESHOLD = 50;
+
     DecentralizedStableCoin private immutable i_dscAddress;
     mapping(address colletralToken => address priceFeed) private s_priceFeeds;
     mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
+    mapping(address user => uint256 ajmountDscMinted) private s_DSCMinted;
 
+    address[] private s_collateralTokens;
 
     // Events //
     event CollateralDeposited(address indexed user, address indexed token, uint256 amount);
+    event CollateralRedeemed(address indexed redeemedFrom,address indexed redeemedTo,address token,uint256 amount);
 
     // Modifiers //
     modifier amountMustBeMoreThanZero(uint256 _amount) {
@@ -44,6 +53,7 @@ contract DSCEngine is ReentrancyGuard {
         }
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
+            s_collateralTokens.push(tokenAddresses[i]);
         }
         i_dscAddress = DecentralizedStableCoin(_dscAddress);
     }
@@ -75,4 +85,31 @@ contract DSCEngine is ReentrancyGuard {
             revert DSCEngine__TransferFailed();
         }
     }
+
+    function _calculateHealthFactor(
+        uint256 totalDSCMinted,
+        uint256 collateralValueInUsd
+    )
+        private
+        pure
+        returns(uint256)
+    {
+        if(totalDSCMinted==0){
+            return type(uint256).max;   
+        }
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd*LIQUIDATION_THRESHOLD)/LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold*PRECISION)/totalDSCMinted;
+    }
+
+    function calculateHealthFactor(
+        uint256 totalDSCMinted,
+        uint256 collateralValueInUsd
+    )
+       external
+       pure
+       returns(uint256)
+    {
+        return _calculateHealthFactor(totalDSCMinted,collateralValueInUsd);
+    }
+
 }
