@@ -31,14 +31,13 @@ contract DSCEngineTest is Test {
     address public liquidator = makeAddr("liquidator");
     uint256 public collateralToCover = 20 ether;
 
-    function setUpTests() external {
+    function setUp() external {
         DeployDSC deployer = new DeployDSC();
         (dsc,dsce,helperConfig) = deployer.run();
         (ethUsdPriceFeed,btcUsdPriceFeed,weth,wbtc,deployerKey) = helperConfig.activeNetworkConfig();
         if(block.chainid==31337){
             vm.deal(user,STARTING_USER_BALANCE);
         }
-
         ERC20Mock(weth).mint(user,STARTING_USER_BALANCE);
         ERC20Mock(wbtc).mint(user,STARTING_USER_BALANCE);
     }
@@ -54,5 +53,12 @@ contract DSCEngineTest is Test {
 
         vm.expectRevert(DSCEngine.DSCEngine__Constructor__TokenAndPriceFeedLengthMismatch.selector);
         new DSCEngine(address(dsc),tokenAddresses,priceFeedAddresses);
+    }
+
+    function testGetUsdValue() public {
+        uint256 ethAmount = 15e18;
+        uint256 expectedUsd = 30000e18;
+        uint256 actualUsd = dsce.getUsdValue(weth, ethAmount);
+        assertEq(expectedUsd, actualUsd);
     }
 }
