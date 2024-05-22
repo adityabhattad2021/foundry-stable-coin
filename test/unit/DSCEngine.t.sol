@@ -42,4 +42,17 @@ contract DSCEngineTest is Test {
         ERC20Mock(weth).mint(user,STARTING_USER_BALANCE);
         ERC20Mock(wbtc).mint(user,STARTING_USER_BALANCE);
     }
+
+    // Test for constructor
+    function testRevertsIfTokenLengthDoesntMatchPriceFeeds() public {
+        address[] memory tokenAddresses = new address[](1);
+        address[] memory priceFeedAddresses = new address[](2);
+
+        tokenAddresses[0]=weth;
+        priceFeedAddresses[0]=ethUsdPriceFeed;
+        priceFeedAddresses[1]=btcUsdPriceFeed;
+
+        vm.expectRevert(DSCEngine.DSCEngine__Constructor__TokenAndPriceFeedLengthMismatch.selector);
+        new DSCEngine(address(dsc),tokenAddresses,priceFeedAddresses);
+    }
 }
