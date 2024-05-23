@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
-
 import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
@@ -33,13 +32,13 @@ contract DSCEngineTest is Test {
 
     function setUp() external {
         DeployDSC deployer = new DeployDSC();
-        (dsc,dsce,helperConfig) = deployer.run();
-        (ethUsdPriceFeed,btcUsdPriceFeed,weth,wbtc,deployerKey) = helperConfig.activeNetworkConfig();
-        if(block.chainid==31337){
-            vm.deal(user,STARTING_USER_BALANCE);
+        (dsc, dsce, helperConfig) = deployer.run();
+        (ethUsdPriceFeed, btcUsdPriceFeed, weth, wbtc, deployerKey) = helperConfig.activeNetworkConfig();
+        if (block.chainid == 31337) {
+            vm.deal(user, STARTING_USER_BALANCE);
         }
-        ERC20Mock(weth).mint(user,STARTING_USER_BALANCE);
-        ERC20Mock(wbtc).mint(user,STARTING_USER_BALANCE);
+        ERC20Mock(weth).mint(user, STARTING_USER_BALANCE);
+        ERC20Mock(wbtc).mint(user, STARTING_USER_BALANCE);
     }
 
     // Test for constructor
@@ -47,12 +46,12 @@ contract DSCEngineTest is Test {
         address[] memory tokenAddresses = new address[](1);
         address[] memory priceFeedAddresses = new address[](2);
 
-        tokenAddresses[0]=weth;
-        priceFeedAddresses[0]=ethUsdPriceFeed;
-        priceFeedAddresses[1]=btcUsdPriceFeed;
+        tokenAddresses[0] = weth;
+        priceFeedAddresses[0] = ethUsdPriceFeed;
+        priceFeedAddresses[1] = btcUsdPriceFeed;
 
         vm.expectRevert(DSCEngine.DSCEngine__Constructor__TokenAndPriceFeedLengthMismatch.selector);
-        new DSCEngine(address(dsc),tokenAddresses,priceFeedAddresses);
+        new DSCEngine(address(dsc), tokenAddresses, priceFeedAddresses);
     }
 
     function testGetUsdValue() public {
@@ -60,5 +59,14 @@ contract DSCEngineTest is Test {
         uint256 expectedUsd = 30000e18;
         uint256 actualUsd = dsce.getUsdValue(weth, ethAmount);
         assertEq(expectedUsd, actualUsd);
+    }
+
+    function testRevertsIfCollateralZero() public {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dsce), amountCollateral);
+
+        vm.expectRevert(DSCEngine.DSCEngine__AmountMustBeMoreThanZero.selector);
+        dsce.depositCollateral(weth, 0);
+        vm.stopPrank();
     }
 }
