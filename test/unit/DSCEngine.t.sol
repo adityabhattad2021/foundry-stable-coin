@@ -61,12 +61,36 @@ contract DSCEngineTest is Test {
         assertEq(expectedUsd, actualUsd);
     }
 
+    function testGetTokenAmountFromUsd() public {
+        uint256 usdAmount = 100 ether;
+        uint256 expectedWeth = 0.05 ether;
+        uint256 actualWeth = dsce.getTokenAmountFromUsd(weth, usdAmount);
+        assertEq(expectedWeth, actualWeth);
+    }
+
     function testRevertsIfCollateralZero() public {
         vm.startPrank(user);
         ERC20Mock(weth).approve(address(dsce), amountCollateral);
 
         vm.expectRevert(DSCEngine.DSCEngine__AmountMustBeMoreThanZero.selector);
         dsce.depositCollateral(weth, 0);
+        vm.stopPrank();
+    }
+
+    modifier depositCollateral(){
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dsce), amountCollateral);
+        dsce.depositCollateral(weth, amountCollateral);
+        vm.stopPrank();
+        _;
+    }
+
+    function testRevertWithUnapprovedCollateral() public {
+        ERC20Mock randomToken = new ERC20Mock();
+        randomToken.mint(user, amountCollateral);
+        vm.startPrank(user);
+        vm.expectRevert(DSCEngine.DSCEngine__TokenNotSupported.selector);
+        dsce.depositCollateral(address(randomToken), amountCollateral);
         vm.stopPrank();
     }
 }
