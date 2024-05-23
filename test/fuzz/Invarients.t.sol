@@ -30,4 +30,15 @@ contract InvarientsTest is StdInvariant, Test{
         (, , weth, wbtc, ) = helperConfig.activeNetworkConfig();
         targetContract(address(dsce));
     }
+
+    function invariant_protocolMustHaveMoreValueThanTotalSupply() public view {
+        uint256 totalSuply = dsc.totalSupply();
+        uint256 totalWethDeposited = IERC20(weth).balanceOf(address(dsc));
+        uint256 totalWbtcDeposited = IERC20(wbtc).balanceOf(address(dsc));
+
+        uint256 wEthValue = dsce.getUsdValue(weth,totalWethDeposited);
+        uint256 wBtcValue = dsce.getUsdValue(wbtc,totalWbtcDeposited);
+
+        assert(totalSuply <= wEthValue + wBtcValue);
+    }
 }
